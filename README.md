@@ -10,4 +10,5 @@ Measure your touchpad and put its size (mm) into config.txt. You can also change
 
 # TODO
 Test Windows 7 and 8/8.1. They both support HID_USAGE_DIGITIZER_TOUCH_PAD if precision drivers are installed
+
 Add logo
