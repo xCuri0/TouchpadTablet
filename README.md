@@ -3,6 +3,7 @@ Turns your precision touchpad into a tablet with custom area support. Created to
 
 # Requirements
 Precision touchpad driver (you can download it usually if your laptop didn't come with it)
+
 Windows 7+ though I have only tested it on Windows 10
 
 # Usage
