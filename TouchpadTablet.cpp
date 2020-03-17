@@ -1,5 +1,6 @@
 #include <iostream>
 #include <string>
+#include <sstream>
 #include <fstream>
 #include <windows.h>
 #include <stdio.h>
@@ -22,11 +23,14 @@ WNDCLASSEX wc;
 NOTIFYICONDATA nid = {};
 
 RECT bounds = { -1, -1, -1, -1 };
-// mm
+// units in mm. defaults are taken from my laptop
 float width = 110;
 float height = 51;
-float awidth = 80;
-float aheight = 45;
+float awidth = 110;
+float aheight = 51;
+
+int swidth = GetSystemMetrics(SM_CXSCREEN);
+int sheight = GetSystemMetrics(SM_CYSCREEN);
 
 // Contact information parsed from the HID report descriptor.
 struct contact_info
@@ -95,6 +99,17 @@ debugf(const char* fmt, ...)
 #else
 #define debugf(...) ((void)0)
 #endif
+
+std::vector<std::string> split(const std::string& s, char delim) {
+    std::stringstream ss(s);
+    std::string item;
+    std::vector<std::string> elems;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+        // elems.push_back(std::move(item)); // if C++11 (based on comment from @mchiasson)
+    }
+    return elems;
+}
 
 // Taken from Windows 7 SDK
 BOOL AddNotificationIcon()
@@ -539,7 +554,7 @@ void ReadCalibration() {
         debugf("Loaded calibration %d %d %d %d", bounds.left, bounds.right, bounds.top, bounds.bottom);
     }
     else {
-        MessageBox(hwnd, "Calibrate touchpad by touching all 4 corners", "TouchpadTablet", MB_OK | MB_ICONQUESTION);
+        MessageBox(hwnd, "Calibrate touchpad by touching each corner after clicking ok", "TouchpadTablet", MB_OK | MB_ICONQUESTION);
     }
 }
 
@@ -563,8 +578,29 @@ void HandleCalibration(LONG x, LONG y) {
 }
 
 void ReadConfig() {
-
+    std::string line;
+    std::ifstream input("config.txt");
+    if (input.good()) {
+        for (std::string line; std::getline(input, line); )
+        {
+            if (line[0] == '#')
+                continue;
+            std::vector<std::string> s = split(line, '=');
+            if (s.size() == 2) {
+                if (s[0] == "Width")
+                    width = std::stof(s[1].c_str());
+                else if (s[0] == "Height")
+                    height = std::stof(s[1].c_str());
+                else if (s[0] == "AreaWidth")
+                    awidth = std::stof(s[1].c_str());
+                else if (s[0] == "AreaHeight")
+                    aheight = std::stof(s[1].c_str());
+            }
+        }
+        debugf("Loaded config.txt");
+    }
 }
+
 // Handles a WM_INPUT event
 static void HandleRawInput(WPARAM* wParam, LPARAM* lParam)
 {
@@ -585,15 +621,14 @@ static void HandleRawInput(WPARAM* wParam, LPARAM* lParam)
     contact contact = GetPrimaryContact(contacts);
     HandleCalibration(contact.point.x, contact.point.y);
     debugf("%d %d", contact.point.x, contact.point.y);
-    float x = (contact.point.x - bounds.left - ((((float)bounds.right - (float)bounds.left) - newx) / 2)) * (1600.0 / newx);
-    float y = (contact.point.y - bounds.top - ((((float)bounds.bottom - (float)bounds.top) - newy) / 2)) * (900.0 / newy);
+    double x = (contact.point.x - bounds.left - ((((float)bounds.right - (float)bounds.left) - newx) / 2)) * ((float)swidth / newx);
+    double y = (contact.point.y - bounds.top - ((((float)bounds.bottom - (float)bounds.top) - newy) / 2)) * ((float)sheight / newy);
 
     event.type = INPUT_MOUSE;
-    event.mi.dx = (x * 65536) / 1600;
-    event.mi.dy = (y * 65536) / 900;
+    event.mi.dx = (long)((x * 65536) / swidth);
+    event.mi.dy = (long)((y * 65536) / sheight);
     event.mi.dwFlags = MOUSEEVENTF_MOVE | MOUSEEVENTF_ABSOLUTE;
     SendInput(1, &event, sizeof(INPUT));
-    
 }
 
 BOOL HasPrecisionTouchpad() {

@@ -1,0 +1,8 @@
+# Touchpad physical width in mm
+Width=110
+# Touchpad physical height in mm
+Height=51
+# Area width in mm
+AreaWidth=80
+# Area height in mm
+AreaHeight=45
