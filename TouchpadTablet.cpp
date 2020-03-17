@@ -105,8 +105,7 @@ std::vector<std::string> split(const std::string& s, char delim) {
     std::string item;
     std::vector<std::string> elems;
     while (std::getline(ss, item, delim)) {
-        elems.push_back(item);
-        // elems.push_back(std::move(item)); // if C++11 (based on comment from @mchiasson)
+        elems.push_back(std::move(item));
     }
     return elems;
 }
@@ -609,17 +608,20 @@ static void HandleRawInput(WPARAM* wParam, LPARAM* lParam)
     RAWINPUTHEADER hdr = GetRawInputHeader(hInput);
     device_info& dev = GetDeviceInfo(hdr.hDevice);
     malloc_ptr<RAWINPUT> input = GetRawInput(hInput, hdr);
+    std::vector<contact> contacts = GetContacts(dev, input.get());
+
     float newx = ((float)bounds.right - (float)bounds.left) * ((float)awidth / (float)width);
     float newy = ((float)bounds.bottom - (float)bounds.top) * ((float)aheight / (float)height);
 
-    std::vector<contact> contacts = GetContacts(dev, input.get());
+    for (const contact& contact : contacts) {
+        HandleCalibration(contact.point.x, contact.point.y);
+    }
     if (contacts.empty()) {
         debugf("Found no contacts in input event");
         return;
     }
 
     contact contact = GetPrimaryContact(contacts);
-    HandleCalibration(contact.point.x, contact.point.y);
     debugf("%d %d", contact.point.x, contact.point.y);
     double x = (contact.point.x - bounds.left - ((((float)bounds.right - (float)bounds.left) - newx) / 2)) * ((float)swidth / newx);
     double y = (contact.point.y - bounds.top - ((((float)bounds.bottom - (float)bounds.top) - newy) / 2)) * ((float)sheight / newy);
